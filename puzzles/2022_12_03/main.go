@@ -9,7 +9,7 @@ import (
 
 func main() {
 
-	dataset, _ := os.Open("2022_03/dataset.txt")
+	dataset, _ := os.Open("puzzles/2022_12_03/dataset.txt")
 	scanner := bufio.NewScanner(dataset)
 
 	var rucksacks []string
@@ -46,6 +46,6 @@ func main() {
 }
 
 func getPriority(item string) int {
-	priorities := "abcdefghijklmnopqrsturucksackwxyzABCDEFGHIJKLMNOPQRSTUrucksackWXYZ"
+	priorities := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	return strings.Index(priorities, item) + 1
 }
