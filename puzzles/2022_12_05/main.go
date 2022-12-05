@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 func main() {
@@ -23,34 +24,53 @@ func main() {
 		lines = append(lines, scanner.Text())
 	}
 
-	//	stacksSchema := `
-	//[M]                     [N] [Z]
-	//[F]             [R] [Z] [C] [C]
-	//[C]     [V]     [L] [N] [G] [V]
-	//[W]     [L]     [T] [H] [V] [F] [H]
-	//[T]     [T] [W] [F] [B] [P] [J] [L]
-	//[D] [L] [H] [J] [C] [G] [S] [R] [M]
-	//[L] [B] [C] [P] [S] [D] [M] [Q] [P]
-	//[B] [N] [J] [S] [Z] [W] [F] [W] [R]
-	// 1   2   3   4   5   6   7   8   9
-	// `
-	stacks := make([][]string, 10)
-	stacks[0] = []string{}
-	stacks[1] = []string{"B", "L", "D", "T", "W", "C", "F", "M"}
-	stacks[2] = []string{"N", "B", "L"}
-	stacks[3] = []string{"J", "C", "H", "T", "L", "V"}
-	stacks[4] = []string{"S", "P", "J", "W"}
-	stacks[5] = []string{"Z", "S", "C", "F", "T", "L", "R"}
-	stacks[6] = []string{"W", "D", "G", "B", "H", "N", "Z"}
-	stacks[7] = []string{"F", "M", "S", "P", "V", "G", "C", "N"}
-	stacks[8] = []string{"W", "Q", "R", "J", "F", "V", "C", "Z"}
-	stacks[9] = []string{"R", "P", "M", "L", "H"}
-
-	for stackNumber, stack := range stacks {
-		fmt.Println(stackNumber, " ", stack)
+	var stackSchema []string
+	for _, line := range lines {
+		if line == "" {
+			break
+		}
+		for strings.Contains(line, "]    ") {
+			line = strings.ReplaceAll(line, "]    ", "] [_]")
+		}
+		for strings.Contains(line, "    [") {
+			line = strings.ReplaceAll(line, "    [", "[_] [")
+		}
+		line = strings.ReplaceAll(line, "[", "")
+		line = strings.ReplaceAll(line, "]", "")
+		line = strings.ReplaceAll(line, " ", "")
+		stackSchema = append(stackSchema, line)
 	}
 
+	stacksPart1 := make([][]string, len(stackSchema[len(stackSchema)-1]))
+	stacksPart2 := make([][]string, len(stackSchema[len(stackSchema)-1]))
+	for _, stackLine := range stackSchema {
+		for i, stack := range stackLine {
+			if stack == '_' {
+				continue
+			}
+			if _, err := strconv.Atoi(string(stack)); err == nil {
+				continue
+			}
+			stacksPart1[i] = append([]string{string(stack)}, stacksPart1[i]...)
+			stacksPart2[i] = append([]string{string(stack)}, stacksPart2[i]...)
+		}
+	}
+
+	//print stacks
+	fmt.Println("Original stacks:")
+	for stackNumber, stack := range stacksPart1 {
+		fmt.Println(stackNumber, stack)
+	}
+
+	instructions := false
 	for _, line := range lines {
+		if line == "" {
+			instructions = true
+			continue
+		}
+		if !instructions {
+			continue
+		}
 		regex := regexp.MustCompile(`move (\d+) from (\d+) to (\d+)`)
 		matches := regex.FindStringSubmatch(line)
 		if len(matches) != 4 {
@@ -60,28 +80,35 @@ func main() {
 		stackFrom, _ := strconv.Atoi(matches[2])
 		stackTo, _ := strconv.Atoi(matches[3])
 
-		/* Part 1
+		stackFrom--
+		stackTo--
+
+		//Part 1
 		for i := 0; i < quantityToMove; i++ {
-			stacks[stackTo] = append(stacks[stackTo], stacks[stackFrom][len(stacks[stackFrom])-1])
-			stacks[stackFrom] = stacks[stackFrom][:len(stacks[stackFrom])-1]
+			stacksPart1[stackTo] = append(stacksPart1[stackTo], stacksPart1[stackFrom][len(stacksPart1[stackFrom])-1])
+			stacksPart1[stackFrom] = stacksPart1[stackFrom][:len(stacksPart1[stackFrom])-1]
 		}
-		*/
 
 		// Part 2
-		stacks[stackTo] = append(stacks[stackTo], stacks[stackFrom][len(stacks[stackFrom])-quantityToMove:]...)
-		stacks[stackFrom] = stacks[stackFrom][:len(stacks[stackFrom])-quantityToMove]
+		stacksPart2[stackTo] = append(stacksPart2[stackTo], stacksPart2[stackFrom][len(stacksPart2[stackFrom])-quantityToMove:]...)
+		stacksPart2[stackFrom] = stacksPart2[stackFrom][:len(stacksPart2[stackFrom])-quantityToMove]
 
 	}
 
-	for stackNumber, stack := range stacks {
+	fmt.Println("\n\n-------\n\nSchema part 1: ")
+	responsePart1 := ""
+	for stackNumber, stack := range stacksPart1 {
 		fmt.Println(stackNumber, " ", stack)
+		responsePart1 += stack[len(stack)-1]
 	}
+	fmt.Println("\nResponse: " + responsePart1)
 
-	for _, stack := range stacks {
-		if len(stack) == 0 {
-			continue
-		}
-		fmt.Print(stack[len(stack)-1], "")
+	fmt.Println("\nSchema part 2: ")
+	responsePart2 := ""
+	for stackNumber, stack := range stacksPart2 {
+		fmt.Println(stackNumber, " ", stack)
+		responsePart2 += stack[len(stack)-1]
 	}
+	fmt.Println("\nResponse: " + responsePart2)
 
 }
