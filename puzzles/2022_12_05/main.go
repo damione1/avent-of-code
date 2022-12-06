@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 func main() {
@@ -18,63 +17,58 @@ func main() {
 	}
 
 	scanner := bufio.NewScanner(content)
-
-	var lines []string
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
+	//split instructions and stack schema
+	var instructions []string
 	var stackSchema []string
-	for _, line := range lines {
+	isInstructions := false
+	for scanner.Scan() {
+		line := scanner.Text()
 		if line == "" {
-			break
+			isInstructions = true
+			continue
 		}
-		for strings.Contains(line, "]    ") {
-			line = strings.ReplaceAll(line, "]    ", "] [_]")
-		}
-		for strings.Contains(line, "    [") {
-			line = strings.ReplaceAll(line, "    [", "[_] [")
-		}
-		line = strings.ReplaceAll(line, "[", "")
-		line = strings.ReplaceAll(line, "]", "")
-		line = strings.ReplaceAll(line, " ", "")
-		stackSchema = append(stackSchema, line)
-	}
-
-	stacksPart1 := make([][]string, len(stackSchema[len(stackSchema)-1]))
-	stacksPart2 := make([][]string, len(stackSchema[len(stackSchema)-1]))
-	for _, stackLine := range stackSchema {
-		for i, stack := range stackLine {
-			if stack == '_' {
-				continue
-			}
-			if _, err := strconv.Atoi(string(stack)); err == nil {
-				continue
-			}
-			stacksPart1[i] = append([]string{string(stack)}, stacksPart1[i]...)
-			stacksPart2[i] = append([]string{string(stack)}, stacksPart2[i]...)
+		if isInstructions {
+			instructions = append(instructions, line)
+		} else {
+			stackSchema = append([]string{line}, stackSchema...)
 		}
 	}
 
-	//print stacks
+	//create stacks indexes
+	index := make(map[int]int)
+	for charIndex, character := range stackSchema[0] {
+		if character != ' ' {
+			stackNumber, _ := strconv.Atoi(string(character))
+			index[stackNumber] = charIndex
+		}
+	}
+
+	//create stacks
+	stacksPart1 := make([][]string, len(index))
+	stacksPart2 := make([][]string, len(index))
+	for lineNumber, stackLine := range stackSchema {
+		if lineNumber == 0 {
+			continue
+		}
+		for stackNumber, charIndex := range index {
+			if charIndex < len(stackLine) && stackLine[charIndex] != ' ' {
+				stacksPart1[stackNumber-1] = append(stacksPart1[stackNumber-1], string(stackLine[charIndex]))
+				stacksPart2[stackNumber-1] = append(stacksPart2[stackNumber-1], string(stackLine[charIndex]))
+			}
+		}
+	}
+
 	fmt.Println("Original stacks:")
 	for stackNumber, stack := range stacksPart1 {
 		fmt.Println(stackNumber, stack)
 	}
 
-	instructions := false
-	for _, line := range lines {
-		if line == "" {
-			instructions = true
-			continue
-		}
-		if !instructions {
-			continue
-		}
+	//process instructions
+	for _, instruction := range instructions {
 		regex := regexp.MustCompile(`move (\d+) from (\d+) to (\d+)`)
-		matches := regex.FindStringSubmatch(line)
+		matches := regex.FindStringSubmatch(instruction)
 		if len(matches) != 4 {
-			log.Fatal("Wrong line format: ", line)
+			log.Fatal("Wrong line format: ", instruction)
 		}
 		quantityToMove, _ := strconv.Atoi(matches[1])
 		stackFrom, _ := strconv.Atoi(matches[2])
