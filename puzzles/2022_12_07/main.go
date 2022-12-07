@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -14,12 +15,12 @@ type directory struct {
 	children []*directory
 	files    []file
 	parent   *directory
-	size     int64
+	size     int
 }
 
 type file struct {
 	name string
-	size int64
+	size int
 }
 
 func main() {
@@ -36,42 +37,51 @@ func main() {
 		instructions = append(instructions, scanner.Text())
 	}
 
-	directory := generateDirectoryTree(instructions)
+	var folderSizeMap []int
+	directory := generateDirectoryTree(instructions, &folderSizeMap)
 
-	printFolder(*directory, 0)
+	printTree(*directory, 0)
 
-	//calculate sum of directory of less than 100000
-	var folderSize = make(map[string]int64)
-	calcBigDirectorySize(directory, folderSize)
-	//calc the sum of the directories
-	var sum int64 = 0
-	for _, size := range folderSize {
-		//fmt.Println(folderName, size)
-		if size < 100000 {
-			sum += size
+	var usedSpace int = 0
+	var folderSum int = 0
+	for _, size := range folderSizeMap {
+		if size <= 100000 {
+			folderSum += size
+		}
+		if size > usedSpace {
+			usedSpace = size
 		}
 	}
-	fmt.Println("Sum of the directories with size less than 100000: ", sum)
+	fmt.Println("Sum of the directories with size less than 100000: ", usedSpace)
+
+	var totalSpace int = 70000000
+	var freeSpace int = totalSpace - usedSpace
+	var requiredSpace int = 30000000 - freeSpace
+
+	sort.Ints(folderSizeMap)
+
+	fmt.Println("Required space: ", requiredSpace)
+	fmt.Println("Free space: ", freeSpace)
+	for _, size := range folderSizeMap {
+		if size >= requiredSpace {
+			fmt.Println("Smallest folder that can be deleted to free up the required space: ", size)
+			break
+		}
+	}
 
 }
 
-func printFolder(folder directory, level int) {
-	fmt.Println(strings.Repeat("-", level), "\033[1m"+folder.name, folder.size, "\033[0m")
+func printTree(folder directory, level int) {
+	fmt.Println(strings.Repeat("-", level), "\033[1m"+folder.name, "(", folder.size, ")", "\033[0m")
 	for _, file := range folder.files {
 		fmt.Println(strings.Repeat(" ", level), "| "+file.name, file.size)
 	}
 	for _, child := range folder.children {
-		printFolder(*child, level+1)
+		printTree(*child, level+1)
 	}
 }
 
-func calcBigDirectorySize(folder *directory, folderSize map[string]int64) {
-	folderSize[folder.name] = int64(folder.size)
-	for _, child := range folder.children {
-		calcBigDirectorySize(child, folderSize)
-	}
-}
-func generateDirectoryTree(instructions []string) *directory {
+func generateDirectoryTree(instructions []string, folderSizeMap *[]int) *directory {
 	var root directory = directory{
 		name:     "root",
 		size:     0,
@@ -138,26 +148,29 @@ func generateDirectoryTree(instructions []string) *directory {
 				size, _ := strconv.Atoi(splittedInstructions[0])
 				file := file{
 					name: splittedInstructions[1],
-					size: int64(size),
+					size: size,
 				}
 				currentDirectoryPointer.files = append(currentDirectoryPointer.files, file)
-				currentDirectoryPointer.size += file.size
-				calcDirectorySize(*currentDirectoryPointer)
-
 			}
 		}
 
 	}
 
+	calcDirectoriesSize(&root, folderSizeMap)
+
 	return &root
 
 }
 
-func calcDirectorySize(directory directory) {
-	//add the size of the directory itself to his parent.
-	currentDirectoryPointer := &directory
-	for currentDirectoryPointer.parent != nil {
-		currentDirectoryPointer.parent.size += currentDirectoryPointer.size
-		currentDirectoryPointer = currentDirectoryPointer.parent
+func calcDirectoriesSize(folder *directory, folderSizeMap *[]int) int {
+	var sum int = 0
+	for _, file := range folder.files {
+		sum += file.size
 	}
+	for _, child := range folder.children {
+		sum += calcDirectoriesSize(child, folderSizeMap)
+	}
+	folder.size = sum
+	*folderSizeMap = append(*folderSizeMap, sum)
+	return sum
 }
