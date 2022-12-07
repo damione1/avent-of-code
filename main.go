@@ -8,9 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+
+	fmt.Println(getSession())
 
 	nextDate, err := get_next_available_date()
 
@@ -31,6 +35,7 @@ func main() {
 }
 
 func getSession() string {
+	godotenv.Load()
 	return os.Getenv("AOC_SESSION")
 }
 

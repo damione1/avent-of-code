@@ -14,12 +14,12 @@ type directory struct {
 	children []*directory
 	files    []file
 	parent   *directory
-	size     int32
+	size     int64
 }
 
 type file struct {
 	name string
-	size int32
+	size int64
 }
 
 func main() {
@@ -56,10 +56,9 @@ func main() {
 }
 
 func printFolder(folder directory, level int) {
-	size := calcDirectorySize(folder)
-	fmt.Println(strings.Repeat("-", level), folder.name, size)
+	fmt.Println(strings.Repeat("-", level), "\033[1m"+folder.name, folder.size, "\033[0m")
 	for _, file := range folder.files {
-		fmt.Println(strings.Repeat(" ", level+1), "| "+file.name, file.size)
+		fmt.Println(strings.Repeat(" ", level), "| "+file.name, file.size)
 	}
 	for _, child := range folder.children {
 		printFolder(*child, level+1)
@@ -67,25 +66,11 @@ func printFolder(folder directory, level int) {
 }
 
 func calcBigDirectorySize(folder *directory, folderSize map[string]int64) {
-	size := calcDirectorySize(*folder)
-	folderSize[folder.name] = int64(size)
+	folderSize[folder.name] = int64(folder.size)
 	for _, child := range folder.children {
 		calcBigDirectorySize(child, folderSize)
 	}
 }
-
-func calcDirectorySize(directory directory) int {
-	var size = int(directory.size)
-	for _, child := range directory.children {
-		size += calcDirectorySize(*child)
-	}
-	for _, file := range directory.files {
-		size += int(file.size)
-	}
-
-	return size
-}
-
 func generateDirectoryTree(instructions []string) *directory {
 	var root directory = directory{
 		name:     "root",
@@ -142,17 +127,37 @@ func generateDirectoryTree(instructions []string) *directory {
 				currentDirectoryPointer.children = append(currentDirectoryPointer.children, &newDir)
 			}
 		} else {
-			size, _ := strconv.Atoi(splittedInstructions[0])
-			file := file{
-				name: splittedInstructions[1],
-				size: int32(size),
+			var fileExists bool = false
+			for _, file := range currentDirectoryPointer.files {
+				if file.name == splittedInstructions[1] {
+					fileExists = true
+					break
+				}
 			}
-			currentDirectoryPointer.files = append(currentDirectoryPointer.files, file)
-			currentDirectoryPointer.size += file.size
+			if !fileExists {
+				size, _ := strconv.Atoi(splittedInstructions[0])
+				file := file{
+					name: splittedInstructions[1],
+					size: int64(size),
+				}
+				currentDirectoryPointer.files = append(currentDirectoryPointer.files, file)
+				currentDirectoryPointer.size += file.size
+				calcDirectorySize(*currentDirectoryPointer)
+
+			}
 		}
 
 	}
 
 	return &root
 
+}
+
+func calcDirectorySize(directory directory) {
+	//add the size of the directory itself to his parent.
+	currentDirectoryPointer := &directory
+	for currentDirectoryPointer.parent != nil {
+		currentDirectoryPointer.parent.size += currentDirectoryPointer.size
+		currentDirectoryPointer = currentDirectoryPointer.parent
+	}
 }
